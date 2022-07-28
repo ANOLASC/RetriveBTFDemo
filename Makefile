@@ -1,31 +1,20 @@
-CLANG = clang
+GCC = gcc
+TARGET = btfdemo
 
-BPFCODE = bpf_program
+clean:
+	rm $(TARGET)
 
-BPFTOOLS = /kernel-src/samples/bpf
-BPFLOADER = $(BPFTOOLS)/bpf_load.c
+INCLUDE += -I./libbpf/include/uapi
+LIBRARY_PATH += -L./libbpf/src/
+DYNSO += -lbpf
+DYNSO += -lelf
+DYNSO += -lz
 
-CCINCLUDE += -I/kernel-src/tools/testing/selftests/bpf
+CFLAGS += -static
+CFLAGS += -Wall
+CFLAGS += -o
 
-LOADINCLUDE += -I/kernel-src/samples/bpf
-LOADINCLUDE += -I/kernel-src/tools/lib
-LOADINCLUDE += -I/kernel-src/tools/perf
-LOADINCLUDE += -I/kernel-src/tools/include
-LIBRARY_PATH = -L/usr/local/lib64
-BPFSO = -lbpf
+$(TARGET): main.c
+	$(GCC) main.c $(INCLUDE) $(LIBRARY_PATH) $(DYNSO) $(CFLAGS) $(TARGET) -g
 
-# Setting -DHAVE_ATTR_TEST=0 for the kernel containing below patch:
-# 06f84d1989b7 perf tools: Make usage of test_attr__* optional for perf-sys.h
-#
-# The patch was included in Linus's tree starting v5.5-rc1, but was also included
-# in stable kernel branch linux-5.4.y. So it's hard to determine whether a kernel
-# is affected based on the kernel version alone:
-# - for a v5.4 kernel from Linus's tree, no;
-# - for a v5.4 kernel from the stable tree (used by many distros), yes.
-#
-# So let's look at the actual kernel source code to decide.
-#
-# See more context at:
-# https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=06f84d1989b7e58d56fa2e448664585749d41221
-# https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=fce9501aec6bdda45ef3a5e365a5e0de7de7fe2d
-
+.DEFAULT_GOAL := $(TARGET)
