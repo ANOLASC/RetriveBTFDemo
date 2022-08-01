@@ -5,6 +5,7 @@
 #include <sys/syscall.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <inttypes.h>
 
 #include "libbpf/src/btf.h"
 #include "libbpf/src/bpf.h"
@@ -67,11 +68,14 @@ print_bpf_map_info(struct bpf_map_info *info)
 {
   printf("bpf_map_info\n");
 	printf("----------\n");
+	printf("type: %"PRIu32"\n", info->type);
 	printf("name: %s\n", info->name);
 	printf("id: %d\n", info->id);
 	printf("key_size: %d\n", info->key_size);
 	printf("value_size: %d\n", info->value_size);
 	printf("max_entries: %d\n", info->max_entries);
+	printf("btf_key_type_id: %"PRIu32"\n", info->btf_key_type_id);
+	printf("btf_value_type_id: %"PRIu32"\n", info->btf_value_type_id);
 	printf("----------\n");
 }
 
@@ -102,6 +106,41 @@ do_prog(int id)
 	return ;
 }
 
+static const char * const btf_kind_str[NR_BTF_KINDS] = {
+	[BTF_KIND_UNKN]		= "UNKNOWN",
+	[BTF_KIND_INT]		= "INT",
+	[BTF_KIND_PTR]		= "PTR",
+	[BTF_KIND_ARRAY]	= "ARRAY",
+	[BTF_KIND_STRUCT]	= "STRUCT",
+	[BTF_KIND_UNION]	= "UNION",
+	[BTF_KIND_ENUM]		= "ENUM",
+	[BTF_KIND_FWD]		= "FWD",
+	[BTF_KIND_TYPEDEF]	= "TYPEDEF",
+	[BTF_KIND_VOLATILE]	= "VOLATILE",
+	[BTF_KIND_CONST]	= "CONST",
+	[BTF_KIND_RESTRICT]	= "RESTRICT",
+	[BTF_KIND_FUNC]		= "FUNC",
+	[BTF_KIND_FUNC_PROTO]	= "FUNC_PROTO",
+	[BTF_KIND_VAR]		= "VAR",
+	[BTF_KIND_DATASEC]	= "DATASEC",
+	[BTF_KIND_FLOAT]	= "FLOAT",
+	[BTF_KIND_DECL_TAG]	= "DECL_TAG",
+	[BTF_KIND_TYPE_TAG]	= "TYPE_TAG",
+	[BTF_KIND_ENUM64]	= "ENUM64",
+};
+
+static int btf_kind_safe(int kind)
+{
+	return kind <= BTF_KIND_MAX ? kind : BTF_KIND_UNKN;
+}
+
+const char *btf_str(const struct btf *btf, __u32 off)
+{
+	if (!off)
+		return "(anon)";
+	return btf__name_by_offset(btf, off) ? : "(invalid)";
+}
+
 void
 do_map(int id)
 {
@@ -114,12 +153,27 @@ do_map(int id)
 	print_bpf_map_info(&info);
 
 	int btf_id = info.btf_id;
-	int btf_fd = bpf_btf_get_fd_by_id(btf_id);
+	printf("btf_id: %d\n", btf_id);
+	//btf_id = info.btf_key_type_id;
+	//int btf_fd = bpf_btf_get_fd_by_id(btf_id);
 
-	struct bpf_btf_info btf_info = {};
-	__u32 btf_info_len = sizeof(btf_info);
-	bpf_obj_get_info_by_fd(btf_fd, &btf_info, &btf_info_len);
-	print_bpf_btf_info(&btf_info);
+	//struct bpf_btf_info btf_info = {};
+	//__u32 btf_info_len = sizeof(btf_info);
+	//bpf_obj_get_info_by_fd(btf_fd, &btf_info, &btf_info_len);
+	//printf("btf: %llu\n", btf_info.btf);
+	//print_bpf_btf_info(&btf_info);
+
+	struct btf *base_btf = NULL;
+  struct btf* btf = btf__load_from_kernel_by_id_split(btf_id, base_btf); 
+	printf("btf: %p\n", btf);
+	
+	const struct btf_type *t;
+
+	t = btf__type_by_id(btf, info.btf_key_type_id);
+	int kind = btf_kind(t);
+	printf("[%u] %s '%s'\n", info.btf_key_type_id, btf_kind_str[btf_kind_safe(kind)],
+					       btf_str(btf, t->name_off));
+
 	return ;
 }
 
