@@ -155,7 +155,8 @@ do_map(int id)
 	int btf_id = info.btf_id;
 	printf("btf_id: %d\n", btf_id);
 	//btf_id = info.btf_key_type_id;
-	//int btf_fd = bpf_btf_get_fd_by_id(btf_id);
+	int btf_fd = bpf_btf_get_fd_by_id(btf_id);
+	printf("btf_fd: %d\n", btf_fd);
 
 	//struct bpf_btf_info btf_info = {};
 	//__u32 btf_info_len = sizeof(btf_info);
@@ -164,7 +165,7 @@ do_map(int id)
 	//print_bpf_btf_info(&btf_info);
 
 	struct btf *base_btf = NULL;
-  struct btf* btf = btf__load_from_kernel_by_id_split(btf_id, base_btf); 
+	struct btf* btf = btf__load_from_kernel_by_id_split(btf_id, base_btf); 
 	printf("btf: %p\n", btf);
 	
 	const struct btf_type *t;
