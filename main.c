@@ -9,6 +9,44 @@
 
 #include "libbpf/src/btf.h"
 #include "libbpf/src/bpf.h"
+//#include "vmlinux.h"
+
+
+typedef struct {
+	int counter;
+} atomic_t;
+
+struct refcount_struct {
+	atomic_t refs;
+};
+
+struct callback_head {
+	struct callback_head *next;
+	void (*func)(struct callback_head *);
+};
+
+typedef struct refcount_struct refcount_t;
+
+struct btf2 {
+	void *data;
+	struct btf_type **types;
+	uint32_t *resolved_ids;
+	uint32_t *resolved_sizes;
+	const char *strings;
+	void *nohdr_data;
+	struct btf_header hdr;
+	uint32_t nr_types;
+	uint32_t types_size;
+	uint32_t data_size;
+	refcount_t refcnt;
+	uint32_t id;
+	struct callback_head rcu;
+	struct btf *base_btf;
+	uint32_t start_id;
+	uint32_t start_str_off;
+	char name[56];
+	bool kernel_btf;
+};
 
 static inline __u64
 ptr_to_u64 (const void* ptr)
@@ -158,22 +196,25 @@ do_map(int id)
 	int btf_fd = bpf_btf_get_fd_by_id(btf_id);
 	printf("btf_fd: %d\n", btf_fd);
 
-	//struct bpf_btf_info btf_info = {};
-	//__u32 btf_info_len = sizeof(btf_info);
-	//bpf_obj_get_info_by_fd(btf_fd, &btf_info, &btf_info_len);
-	//printf("btf: %llu\n", btf_info.btf);
+	struct bpf_btf_info btf_info = {};
+	__u32 btf_info_len = sizeof(btf_info);
+	bpf_obj_get_info_by_fd(btf_fd, &btf_info, &btf_info_len);
+	printf("btf: %llu\n", btf_info.btf);
 	//print_bpf_btf_info(&btf_info);
 
-	struct btf *base_btf = NULL;
-	struct btf* btf = btf__load_from_kernel_by_id_split(btf_id, base_btf); 
-	printf("btf: %p\n", btf);
+	struct btf* base_btf = NULL;
+	struct btf2* btf1 = btf__load_from_kernel_by_id_split(btf_id, base_btf); 
+	printf("btf: %p\n", btf1);
+	printf("btf start_id: %d\n", btf1->start_id);
+	printf("btf nr_types: %d\n", btf1->nr_types);
 	
 	const struct btf_type *t;
 
-	t = btf__type_by_id(btf, info.btf_key_type_id);
+	//t = btf__type_by_id(btf, info.btf_key_type_id);
+	t = btf__type_by_id(btf1, info.btf_value_type_id);
 	int kind = btf_kind(t);
 	printf("[%u] %s '%s'\n", info.btf_key_type_id, btf_kind_str[btf_kind_safe(kind)],
-					       btf_str(btf, t->name_off));
+					       btf_str(btf1, t->name_off));
 
 	return ;
 }
